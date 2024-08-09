@@ -123,7 +123,7 @@ listsort(LSym *l, int (*cmp)(LSym*, LSym*), int off)
 	}
 	NEXT(le) = 0;
 	return l;
-	
+
 	#undef NEXT
 }
 
@@ -441,7 +441,7 @@ blk(LSym *start, int64 addr, int64 size)
 
 	eaddr = addr+size;
 	for(; sym != nil; sym = sym->next) {
-		if(sym->type&SSUB)
+		if((sym->type&SSUB) || (sym->value == 0))
 			continue;
 		if(sym->value >= eaddr)
 			break;
@@ -572,7 +572,7 @@ datblk(int64 addr, int64 size)
 		for(; addr < sym->value+sym->size; addr++)
 			Bprint(&bso, " %.2ux", 0);
 		Bprint(&bso, "\n");
-		
+
 		if(linkmode == LinkExternal) {
 			for(i=0; i<sym->nr; i++) {
 				r = &sym->r[i];
@@ -594,7 +594,7 @@ datblk(int64 addr, int64 size)
 				Bprint(&bso, "\treloc %.8ux/%d %s %s+%#llx [%#llx]\n",
 					(uint)(sym->value+r->off), r->siz, typ, rsname, (vlong)r->add, (vlong)(r->sym->value+r->add));
 			}
-		}				
+		}
 	}
 
 	if(addr < eaddr)
@@ -691,7 +691,7 @@ symalign(LSym *s)
 		align = s->align;
 	return align;
 }
-	
+
 static vlong
 aligndatsize(vlong datsize, LSym *s)
 {
@@ -704,7 +704,7 @@ static int32
 maxalign(LSym *s, int type)
 {
 	int32 align, max;
-	
+
 	max = 0;
 	for(; s != S && s->type <= type; s = s->next) {
 		align = symalign(s);
@@ -891,7 +891,7 @@ void
 growdatsize(vlong *datsizep, LSym *s)
 {
 	vlong datsize;
-	
+
 	datsize = *datsizep;
 	if(s->size < 0)
 		diag("negative size (datsize = %lld, s->size = %lld)", datsize, s->size);
@@ -1087,7 +1087,7 @@ dodata(void)
 	if(datsize != (uint32)datsize) {
 		diag("data or bss segment too large");
 	}
-	
+
 	if(iself && linkmode == LinkExternal && s != nil && s->type == STLSBSS && HEADTYPE != Hopenbsd) {
 		sect = addsection(&segdata, ".tbss", 06);
 		sect->align = PtrSize;
@@ -1109,7 +1109,7 @@ dodata(void)
 			s = s->next;
 		}
 	}
-	
+
 	if(s != nil) {
 		ctxt->cursym = nil;
 		diag("unexpected symbol type %d for %s", s->type, s->name);
@@ -1131,9 +1131,9 @@ dodata(void)
 		segro = &segtext;
 
 	s = datap;
-	
+
 	datsize = 0;
-	
+
 	/* read-only executable ELF, Mach-O sections */
 	for(; s != nil && s->type < STYPE; s = s->next) {
 		sect = addsection(&segtext, s->name, 04);
@@ -1228,7 +1228,7 @@ dodata(void)
 	if(datsize != (uint32)datsize) {
 		diag("read-only data segment too large");
 	}
-	
+
 	/* number the sections */
 	n = 1;
 	for(sect = segtext.sect; sect != nil; sect = sect->next)
