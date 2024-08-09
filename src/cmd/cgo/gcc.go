@@ -498,6 +498,22 @@ func (p *Package) loadDWARF(f *File, names []*Name) {
 			}
 		case dwarf.TagVariable:
 			name, _ := e.Val(dwarf.AttrName).(string)
+			/* NOTE(anton2920): backported from Go 1.19. See: golang/go/issues/53000. */
+			// As of https://reviews.llvm.org/D123534, clang
+			// now emits DW_TAG_variable DIEs that have
+			// no name (so as to be able to describe the
+			// type and source locations of constant strings
+			// like the second arg in the call below:
+			//
+			//     myfunction(42, "foo")
+			//
+			// If a var has no name we won't see attempts to
+			// refer to it via "C.<name>", so skip these vars
+			//
+			// See issue 53000 for more context.
+			if name == "" {
+				break
+			}
 			typOff, _ := e.Val(dwarf.AttrType).(dwarf.Offset)
 			if name == "" || typOff == 0 {
 				fatalf("malformed DWARF TagVariable entry")

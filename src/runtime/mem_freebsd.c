@@ -82,7 +82,7 @@ runtime·SysMap(void *v, uintptr n, bool reserved, uint64 *stat)
 
 	// On 64-bit, we don't actually have v reserved, so tread carefully.
 	if(!reserved) {
-		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|MAP_FIXED|MAP_EXCL, -1, 0);
 		if(p == (void*)ENOMEM)
 			runtime·throw("runtime: out of memory");
 		if(p != v) {

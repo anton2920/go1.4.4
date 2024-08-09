@@ -112,9 +112,10 @@ adddynrel(LSym *s, Reloc *r)
 			r->sym = linklookup(ctxt, ".plt", 0);
 			r->add += targ->plt;
 		}
-		return;		
-	
+		return;
+
 	case 256 + R_386_GOT32:
+	case 256 + R_386_GOT32X:
 		if(targ->type != SDYNIMPORT) {
 			// have symbol
 			if(r->off >= 2 && s->p[r->off-2] == 0x8b) {
@@ -139,11 +140,11 @@ adddynrel(LSym *s, Reloc *r)
 		r->sym = S;
 		r->add += targ->got;
 		return;
-	
+
 	case 256 + R_386_GOTOFF:
 		r->type = R_GOTOFF;
 		return;
-	
+
 	case 256 + R_386_GOTPC:
 		r->type = R_PCREL;
 		r->sym = linklookup(ctxt, ".got", 0);
@@ -155,13 +156,13 @@ adddynrel(LSym *s, Reloc *r)
 			diag("unexpected R_386_32 relocation for dynamic symbol %s", targ->name);
 		r->type = R_ADDR;
 		return;
-	
+
 	case 512 + MACHO_GENERIC_RELOC_VANILLA*2 + 0:
 		r->type = R_ADDR;
 		if(targ->type == SDYNIMPORT)
 			diag("unexpected reloc for dynamic symbol %s", targ->name);
 		return;
-	
+
 	case 512 + MACHO_GENERIC_RELOC_VANILLA*2 + 1:
 		if(targ->type == SDYNIMPORT) {
 			addpltsym(ctxt, targ);
@@ -172,7 +173,7 @@ adddynrel(LSym *s, Reloc *r)
 		}
 		r->type = R_PCREL;
 		return;
-	
+
 	case 512 + MACHO_FAKE_GOTPCREL:
 		if(targ->type != SDYNIMPORT) {
 			// have symbol
@@ -191,7 +192,7 @@ adddynrel(LSym *s, Reloc *r)
 		r->type = R_PCREL;
 		return;
 	}
-	
+
 	// Handle references to ELF symbols from our own object files.
 	if(targ->type != SDYNIMPORT)
 		return;
@@ -203,7 +204,7 @@ adddynrel(LSym *s, Reloc *r)
 		r->sym = linklookup(ctxt, ".plt", 0);
 		r->add = targ->plt;
 		return;
-	
+
 	case R_ADDR:
 		if(s->type != SDATA)
 			break;
@@ -241,7 +242,7 @@ adddynrel(LSym *s, Reloc *r)
 		}
 		break;
 	}
-	
+
 	ctxt->cursym = s;
 	diag("unsupported relocation for dynamic symbol %s (type=%d stype=%d)", targ->name, r->type, targ->type);
 }
@@ -272,7 +273,7 @@ elfreloc1(Reloc *r, vlong sectoff)
 		else
 			return -1;
 		break;
-	
+
 	case R_TLS_LE:
 	case R_TLS_IE:
 		if(r->siz == 4)
@@ -289,7 +290,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 {
 	uint32 v;
 	LSym *rs;
-	
+
 	rs = r->xsym;
 
 	if(rs->type == SHOSTOBJ) {
@@ -297,7 +298,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 			diag("reloc %d to non-macho symbol %s type=%d", r->type, rs->name, rs->type);
 			return -1;
 		}
-		v = rs->dynid;			
+		v = rs->dynid;
 		v |= 1<<27; // external relocation
 	} else {
 		v = rs->sect->extnum;
@@ -319,7 +320,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 		v |= MACHO_GENERIC_RELOC_VANILLA<<28;
 		break;
 	}
-	
+
 	switch(r->siz) {
 	default:
 		return -1;
@@ -363,7 +364,7 @@ void
 elfsetupplt(void)
 {
 	LSym *plt, *got;
-	
+
 	plt = linklookup(ctxt, ".plt", 0);
 	got = linklookup(ctxt, ".got.plt", 0);
 	if(plt->size == 0) {
@@ -371,7 +372,7 @@ elfsetupplt(void)
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x35);
 		addaddrplus(ctxt, plt, got, 4);
-		
+
 		// jmp *got+8
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x25);
@@ -379,7 +380,7 @@ elfsetupplt(void)
 
 		// zero pad
 		adduint32(ctxt, plt, 0);
-		
+
 		// assume got->size == 0 too
 		addaddrplus(ctxt, got, linklookup(ctxt, ".dynamic", 0), 0);
 		adduint32(ctxt, got, 0);
@@ -391,43 +392,43 @@ static void
 addpltsym(Link *ctxt, LSym *s)
 {
 	LSym *plt, *got, *rel;
-	
+
 	if(s->plt >= 0)
 		return;
 
 	adddynsym(ctxt, s);
-	
+
 	if(iself) {
 		plt = linklookup(ctxt, ".plt", 0);
 		got = linklookup(ctxt, ".got.plt", 0);
 		rel = linklookup(ctxt, ".rel.plt", 0);
 		if(plt->size == 0)
 			elfsetupplt();
-		
+
 		// jmpq *got+size
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x25);
 		addaddrplus(ctxt, plt, got, got->size);
-		
+
 		// add to got: pointer to current pos in plt
 		addaddrplus(ctxt, got, plt, plt->size);
-		
+
 		// pushl $x
 		adduint8(ctxt, plt, 0x68);
 		adduint32(ctxt, plt, rel->size);
-		
+
 		// jmp .plt
 		adduint8(ctxt, plt, 0xe9);
 		adduint32(ctxt, plt, -(plt->size+4));
-		
+
 		// rel
 		addaddrplus(ctxt, rel, got, got->size-4);
 		adduint32(ctxt, rel, ELF32_R_INFO(s->dynid, R_386_JMP_SLOT));
-		
+
 		s->plt = plt->size - 16;
 	} else if(HEADTYPE == Hdarwin) {
 		// Same laziness as in 6l.
-		
+
 		LSym *plt;
 
 		plt = linklookup(ctxt, ".plt", 0);
@@ -451,15 +452,15 @@ static void
 addgotsym(Link *ctxt, LSym *s)
 {
 	LSym *got, *rel;
-	
+
 	if(s->got >= 0)
 		return;
-	
+
 	adddynsym(ctxt, s);
 	got = linklookup(ctxt, ".got", 0);
 	s->got = got->size;
 	adduint32(ctxt, got, 0);
-	
+
 	if(iself) {
 		rel = linklookup(ctxt, ".rel", 0);
 		addaddrplus(ctxt, rel, got, s->got);
@@ -477,28 +478,28 @@ adddynsym(Link *ctxt, LSym *s)
 	LSym *d;
 	int t;
 	char *name;
-	
+
 	if(s->dynid >= 0)
 		return;
-	
+
 	if(iself) {
 		s->dynid = nelfsym++;
-		
+
 		d = linklookup(ctxt, ".dynsym", 0);
 
 		/* name */
 		name = s->extname;
 		adduint32(ctxt, d, addstring(linklookup(ctxt, ".dynstr", 0), name));
-		
+
 		/* value */
 		if(s->type == SDYNIMPORT)
 			adduint32(ctxt, d, 0);
 		else
 			addaddr(ctxt, d, s);
-		
+
 		/* size */
 		adduint32(ctxt, d, 0);
-	
+
 		/* type */
 		t = STB_GLOBAL << 4;
 		if(s->cgoexport && (s->type&SMASK) == STEXT)
@@ -507,7 +508,7 @@ adddynsym(Link *ctxt, LSym *s)
 			t |= STT_OBJECT;
 		adduint8(ctxt, d, t);
 		adduint8(ctxt, d, 0);
-	
+
 		/* shndx */
 		if(s->type == SDYNIMPORT)
 			adduint16(ctxt, d, SHN_UNDEF);
@@ -542,10 +543,10 @@ void
 adddynlib(char *lib)
 {
 	LSym *s;
-	
+
 	if(!needlib(lib))
 		return;
-	
+
 	if(iself) {
 		s = linklookup(ctxt, ".dynstr", 0);
 		if(s->size == 0)
@@ -581,7 +582,7 @@ asmb(void)
 		cseek(sect->vaddr - segtext.vaddr + segtext.fileoff);
 		datblk(sect->vaddr, sect->len);
 	}
-	
+
 	if(segrodata.filelen > 0) {
 		if(debug['v'])
 			Bprint(&bso, "%5.2f rodatblk\n", cputime());
@@ -654,7 +655,7 @@ asmb(void)
 				if(debug['v'])
 					Bprint(&bso, "%5.2f dwarf\n", cputime());
 				dwarfemitdebugsections();
-				
+
 				if(linkmode == LinkExternal)
 					elfemitreloc();
 			}
@@ -668,7 +669,7 @@ asmb(void)
 				lcsize = sym->np;
 				for(i=0; i < lcsize; i++)
 					cput(sym->p[i]);
-				
+
 				cflush();
 			}
 			break;

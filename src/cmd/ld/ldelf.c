@@ -370,7 +370,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 	obj->base = base;
 	obj->len = len;
 	obj->name = pn;
-	
+
 	is64 = 0;
 	if(hdr->ident[4] == ElfClass64) {
 		ElfHdrBytes64* hdr;
@@ -405,7 +405,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 		obj->shstrndx = e->e16(hdr->shstrndx);
 	}
 	obj->is64 = is64;
-	
+
 	if(hdr->ident[6] != obj->version)
 		goto bad;
 
@@ -468,7 +468,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 			werrstr("short read");
 			if(Bread(f, &b, sizeof b) != sizeof b)
 				goto bad;
-		
+
 			sect->name = (char*)(uintptr)e->e32(b.name);
 			sect->type = e->e32(b.type);
 			sect->flags = e->e32(b.flags);
@@ -493,7 +493,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 	for(i=0; i<obj->nsect; i++)
 		if(obj->sect[i].name != nil)
 			obj->sect[i].name = (char*)sect->base + (uintptr)obj->sect[i].name;
-	
+
 	// load string table for symbols into memory.
 	obj->symtab = section(obj, ".symtab");
 	if(obj->symtab == nil) {
@@ -509,7 +509,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 		obj->nsymtab = obj->symtab->size / sizeof(ElfSymBytes64);
 	else
 		obj->nsymtab = obj->symtab->size / sizeof(ElfSymBytes);
-	
+
 	if(map(obj, obj->symtab) < 0)
 		goto bad;
 	if(map(obj, obj->symstr) < 0)
@@ -519,7 +519,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 	// they are not as small as the section lists, but we'll need
 	// the memory anyway for the symbol images, so we might
 	// as well use one large chunk.
-	
+
 	// create symbols for mapped sections
 	for(i=0; i<obj->nsect; i++) {
 		sect = &obj->sect[i];
@@ -527,7 +527,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 			continue;
 		if(sect->type != ElfSectNobits && map(obj, sect) < 0)
 			goto bad;
-		
+
 		name = smprint("%s(%s)", pkg, sect->name);
 		s = linklookup(ctxt, name, ctxt->version);
 		free(name);
@@ -611,7 +611,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 			s->external = 1;
 		}
 	}
-	
+
 	// Sort outer lists by address, adding to textp.
 	// This keeps textp in increasing address order.
 	for(i=0; i<obj->nsect; i++) {
@@ -713,7 +713,7 @@ ldelf(Biobuf *f, char *pkg, int64 len, char *pn)
 			//print("rel %s %d %d %s %#llx\n", sect->sym->name, rp->type, rp->siz, rp->sym->name, rp->add);
 		}
 		qsort(r, n, sizeof r[0], rbyoff);	// just in case
-		
+
 		s = sect->sym;
 		s->r = r;
 		s->nr = n;
@@ -731,7 +731,7 @@ static ElfSect*
 section(ElfObj *obj, char *name)
 {
 	int i;
-	
+
 	for(i=0; i<obj->nsect; i++)
 		if(obj->sect[i].name && name && strcmp(obj->sect[i].name, name) == 0)
 			return &obj->sect[i];
@@ -753,7 +753,7 @@ map(ElfObj *obj, ElfSect *sect)
 	werrstr("short read");
 	if(Bseek(obj->f, obj->base+sect->off, 0) < 0 || Bread(obj->f, sect->base, sect->size) != sect->size)
 		return -1;
-	
+
 	return 0;
 }
 
@@ -772,7 +772,7 @@ readsym(ElfObj *obj, int i, ElfSym *sym, int needSym)
 
 	if(obj->is64) {
 		ElfSymBytes64 *b;
-		
+
 		b = (ElfSymBytes64*)(obj->symtab->base + i*sizeof *b);
 		sym->name = (char*)obj->symstr->base + obj->e->e32(b->name);
 		sym->value = obj->e->e64(b->value);
@@ -783,7 +783,7 @@ readsym(ElfObj *obj, int i, ElfSym *sym, int needSym)
 		sym->other = b->other;
 	} else {
 		ElfSymBytes *b;
-		
+
 		b = (ElfSymBytes*)(obj->symtab->base + i*sizeof *b);
 		sym->name = (char*)obj->symstr->base + obj->e->e32(b->name);
 		sym->value = obj->e->e32(b->value);
@@ -855,7 +855,7 @@ int
 rbyoff(const void *va, const void *vb)
 {
 	Reloc *a, *b;
-	
+
 	a = (Reloc*)va;
 	b = (Reloc*)vb;
 	if(a->off < b->off)
@@ -888,12 +888,15 @@ reltype(char *pn, int elftype, uchar *siz)
 	case R('6', R_X86_64_PC32):
 	case R('6', R_X86_64_PLT32):
 	case R('6', R_X86_64_GOTPCREL):
+	case R('6', R_X86_64_GOTPCRELX):
+	case R('6', R_X86_64_REX_GOTPCRELX):
 	case R('8', R_386_32):
 	case R('8', R_386_PC32):
 	case R('8', R_386_GOT32):
 	case R('8', R_386_PLT32):
 	case R('8', R_386_GOTOFF):
 	case R('8', R_386_GOTPC):
+	case R('8', R_386_GOT32X):
 		*siz = 4;
 		break;
 	case R('6', R_X86_64_64):

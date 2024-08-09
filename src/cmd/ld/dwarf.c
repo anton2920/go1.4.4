@@ -1259,9 +1259,9 @@ synthesizemaptypes(DWDie *die)
 		fld = newdie(dwhk, DW_ABRV_ARRAYRANGE, "size");
 		newattr(fld, DW_AT_count, DW_CLS_CONSTANT, BucketSize, 0);
 		newrefattr(fld, DW_AT_type, find_or_diag(&dwtypes, "uintptr"));
-		
+
 		// Construct type to represent an array of BucketSize values
-		dwhv = newdie(&dwtypes, DW_ABRV_ARRAYTYPE, 
+		dwhv = newdie(&dwtypes, DW_ABRV_ARRAYTYPE,
 			      mkinternaltypename("[]val",
 						 getattr(valtype, DW_AT_name)->data, nil));
 		newattr(dwhv, DW_AT_byte_size, DW_CLS_CONSTANT, BucketSize * valsize, 0);
@@ -1278,7 +1278,7 @@ synthesizemaptypes(DWDie *die)
 		// Copy over all fields except the field "data" from the generic bucket.
 		// "data" will be replaced with keys/values below.
 		copychildrenexcept(dwhb, bucket, find(bucket, "data"));
-		
+
 		fld = newdie(dwhb, DW_ABRV_STRUCTFIELD, "keys");
 		newrefattr(fld, DW_AT_type, dwhk);
 		newmemberoffsetattr(fld, BucketSize);
@@ -1421,7 +1421,7 @@ finddebugruntimepath(LSym *s)
 	int i;
 	char *p;
 	LSym *f;
-	
+
 	if(gdbscript[0] != '\0')
 		return;
 
@@ -1476,7 +1476,7 @@ newcfaoffsetattr(DWDie *die, int32 offs)
 
 	i = 0;
 
-	block[i++] = DW_OP_call_frame_cfa;
+	block[i++] = (char)DW_OP_call_frame_cfa;
 	if (offs != 0) {
 		block[i++] = DW_OP_consts;
 		i += sleb128enc(offs, block+i);
@@ -1550,12 +1550,12 @@ writelines(void)
 	epcs = S;
 	lineo = cpos();
 	dwinfo = nil;
-	
+
 	flushunit(dwinfo, epc, epcs, unitstart, headerend - unitstart - 10);
 	unitstart = cpos();
-	
+
 	lang = DW_LANG_Go;
-	
+
 	s = ctxt->textp;
 
 	dwinfo = newdie(&dwroot, DW_ABRV_COMPUNIT, estrdup("go"));
@@ -1760,7 +1760,7 @@ writeframes(void)
 	uleb128put(DWARFREGSP);	// register SP (**ABI-dependent, defined in l.h)
 	uleb128put(PtrSize);	// offset
 
-	cput(DW_CFA_offset + FAKERETURNCOLUMN);	 // return address
+	cput((char)DW_CFA_offset + FAKERETURNCOLUMN);	 // return address
 	uleb128put(-PtrSize / DATAALIGNMENTFACTOR);  // at cfa - x*4
 
 	// 4 is to exclude the length field.
@@ -2012,7 +2012,7 @@ writedwarfreloc(LSym* s)
 	int i;
 	vlong start;
 	Reloc *r;
-	
+
 	start = cpos();
 	for(r = s->r; r < s->r+s->nr; r++) {
 		if(iself)
@@ -2225,7 +2225,7 @@ dwarfaddshstrings(LSym *shstrtab)
 // Add section symbols for DWARF debug info.  This is called before
 // dwarfaddelfheaders.
 void
-dwarfaddelfsectionsyms()
+dwarfaddelfsectionsyms(void)
 {
 	if(infosym != nil) {
 		infosympos = cpos();
@@ -2262,7 +2262,7 @@ dwarfaddelfrelocheader(int elfstr, ElfShdr *shdata, vlong off, vlong size)
 	sh->off = off;
 	sh->size = size;
 	sh->addralign = PtrSize;
-	
+
 }
 
 void

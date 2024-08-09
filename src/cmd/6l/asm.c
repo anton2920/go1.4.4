@@ -85,7 +85,7 @@ void
 adddynrel(LSym *s, Reloc *r)
 {
 	LSym *targ, *rela, *got;
-	
+
 	targ = r->sym;
 	ctxt->cursym = s;
 
@@ -106,7 +106,7 @@ adddynrel(LSym *s, Reloc *r)
 		r->type = R_PCREL;
 		r->add += 4;
 		return;
-	
+
 	case 256 + R_X86_64_PLT32:
 		r->type = R_PCREL;
 		r->add += 4;
@@ -116,8 +116,10 @@ adddynrel(LSym *s, Reloc *r)
 			r->add += targ->plt;
 		}
 		return;
-	
+
 	case 256 + R_X86_64_GOTPCREL:
+	case 256 + R_X86_64_GOTPCRELX:
+	case 256 + R_X86_64_REX_GOTPCRELX:
 		if(targ->type != SDYNIMPORT) {
 			// have symbol
 			if(r->off >= 2 && s->p[r->off-2] == 0x8b) {
@@ -136,13 +138,13 @@ adddynrel(LSym *s, Reloc *r)
 		r->add += 4;
 		r->add += targ->got;
 		return;
-	
+
 	case 256 + R_X86_64_64:
 		if(targ->type == SDYNIMPORT)
 			diag("unexpected R_X86_64_64 relocation for dynamic symbol %s", targ->name);
 		r->type = R_ADDR;
 		return;
-	
+
 	// Handle relocations found in Mach-O object files.
 	case 512 + MACHO_X86_64_RELOC_UNSIGNED*2 + 0:
 	case 512 + MACHO_X86_64_RELOC_SIGNED*2 + 0:
@@ -194,7 +196,7 @@ adddynrel(LSym *s, Reloc *r)
 		r->add += targ->got;
 		return;
 	}
-	
+
 	// Handle references to ELF symbols from our own object files.
 	if(targ->type != SDYNIMPORT)
 		return;
@@ -206,7 +208,7 @@ adddynrel(LSym *s, Reloc *r)
 		r->sym = linklookup(ctxt, ".plt", 0);
 		r->add = targ->plt;
 		return;
-	
+
 	case R_ADDR:
 		if(s->type == STEXT && iself) {
 			// The code is asking for the address of an external
@@ -256,7 +258,7 @@ adddynrel(LSym *s, Reloc *r)
 		}
 		break;
 	}
-	
+
 	ctxt->cursym = s;
 	diag("unsupported relocation for dynamic symbol %s (type=%d stype=%d)", targ->name, r->type, targ->type);
 }
@@ -288,7 +290,7 @@ elfreloc1(Reloc *r, vlong sectoff)
 		else
 			return -1;
 		break;
-		
+
 	case R_CALL:
 		if(r->siz == 4) {
 			if(r->xsym->type == SDYNIMPORT)
@@ -314,7 +316,7 @@ elfreloc1(Reloc *r, vlong sectoff)
 				VPUT(R_X86_64_TPOFF32 | (uint64)elfsym<<32);
 		} else
 			return -1;
-		break;		
+		break;
 	}
 
 	VPUT(r->xadd);
@@ -326,7 +328,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 {
 	uint32 v;
 	LSym *rs;
-	
+
 	rs = r->xsym;
 
 	if(rs->type == SHOSTOBJ || r->type == R_PCREL) {
@@ -334,7 +336,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 			diag("reloc %d to non-macho symbol %s type=%d", r->type, rs->name, rs->type);
 			return -1;
 		}
-		v = rs->dynid;			
+		v = rs->dynid;
 		v |= 1<<27; // external relocation
 	} else {
 		v = rs->sect->extnum;
@@ -359,7 +361,7 @@ machoreloc1(Reloc *r, vlong sectoff)
 		v |= 1<<24; // pc-relative bit
 		v |= MACHO_X86_64_RELOC_SIGNED<<28;
 	}
-	
+
 	switch(r->siz) {
 	default:
 		return -1;
@@ -403,15 +405,15 @@ elfsetupplt(void)
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x35);
 		addpcrelplus(ctxt, plt, got, 8);
-		
+
 		// jmpq got+16(IP)
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x25);
 		addpcrelplus(ctxt, plt, got, 16);
-		
+
 		// nopl 0(AX)
 		adduint32(ctxt, plt, 0x00401f0f);
-		
+
 		// assume got->size == 0 too
 		addaddrplus(ctxt, got, linklookup(ctxt, ".dynamic", 0), 0);
 		adduint64(ctxt, got, 0);
@@ -424,9 +426,9 @@ addpltsym(LSym *s)
 {
 	if(s->plt >= 0)
 		return;
-	
+
 	adddynsym(ctxt, s);
-	
+
 	if(iself) {
 		LSym *plt, *got, *rela;
 
@@ -435,32 +437,32 @@ addpltsym(LSym *s)
 		rela = linklookup(ctxt, ".rela.plt", 0);
 		if(plt->size == 0)
 			elfsetupplt();
-		
+
 		// jmpq *got+size(IP)
 		adduint8(ctxt, plt, 0xff);
 		adduint8(ctxt, plt, 0x25);
 		addpcrelplus(ctxt, plt, got, got->size);
-	
+
 		// add to got: pointer to current pos in plt
 		addaddrplus(ctxt, got, plt, plt->size);
-		
+
 		// pushq $x
 		adduint8(ctxt, plt, 0x68);
 		adduint32(ctxt, plt, (got->size-24-8)/8);
-		
+
 		// jmpq .plt
 		adduint8(ctxt, plt, 0xe9);
 		adduint32(ctxt, plt, -(plt->size+4));
-		
+
 		// rela
 		addaddrplus(ctxt, rela, got, got->size-8);
 		adduint64(ctxt, rela, ELF64_R_INFO(s->dynid, R_X86_64_JMP_SLOT));
 		adduint64(ctxt, rela, 0);
-		
+
 		s->plt = plt->size - 16;
 	} else if(HEADTYPE == Hdarwin) {
 		// To do lazy symbol lookup right, we're supposed
-		// to tell the dynamic loader which library each 
+		// to tell the dynamic loader which library each
 		// symbol comes from and format the link info
 		// section just so.  I'm too lazy (ha!) to do that
 		// so for now we'll just use non-lazy pointers,
@@ -470,7 +472,7 @@ addpltsym(LSym *s)
 		// has details about what we're avoiding.
 
 		LSym *plt;
-		
+
 		addgotsym(s);
 		plt = linklookup(ctxt, ".plt", 0);
 
@@ -536,10 +538,10 @@ adddynsym(Link *ctxt, LSym *s)
 		else
 			t |= STT_OBJECT;
 		adduint8(ctxt, d, t);
-	
+
 		/* reserved */
 		adduint8(ctxt, d, 0);
-	
+
 		/* section where symbol is defined */
 		if(s->type == SDYNIMPORT)
 			adduint16(ctxt, d, SHN_UNDEF);
@@ -561,16 +563,16 @@ adddynsym(Link *ctxt, LSym *s)
 			}
 			adduint16(ctxt, d, t);
 		}
-	
+
 		/* value */
 		if(s->type == SDYNIMPORT)
 			adduint64(ctxt, d, 0);
 		else
 			addaddr(ctxt, d, s);
-	
+
 		/* size of object */
 		adduint64(ctxt, d, s->size);
-	
+
 		if(!(s->cgoexport & CgoExportDynamic) && s->dynimplib && needlib(s->dynimplib)) {
 			elfwritedynent(linklookup(ctxt, ".dynamic", 0), DT_NEEDED,
 				addstring(linklookup(ctxt, ".dynstr", 0), s->dynimplib));
@@ -588,10 +590,10 @@ void
 adddynlib(char *lib)
 {
 	LSym *s;
-	
+
 	if(!needlib(lib))
 		return;
-	
+
 	if(iself) {
 		s = linklookup(ctxt, ".dynstr", 0);
 		if(s->size == 0)
@@ -731,7 +733,7 @@ asmb(void)
 				       Bprint(&bso, "%5.2f dwarf\n", cputime());
 
 				dwarfemitdebugsections();
-				
+
 				if(linkmode == LinkExternal)
 					elfemitreloc();
 			}
@@ -745,7 +747,7 @@ asmb(void)
 				lcsize = sym->np;
 				for(i=0; i < lcsize; i++)
 					cput(sym->p[i]);
-				
+
 				cflush();
 			}
 			break;

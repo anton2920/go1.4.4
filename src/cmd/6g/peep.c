@@ -267,7 +267,7 @@ loop1:
 		if(p->from.type == p->to.type)
 		if(prevl(r, p->from.type))
 			excise(r);
-		
+
 		if(p->as == AMOVSD)
 		if(regtyp(&p->from))
 		if(regtyp(&p->to))
@@ -289,7 +289,7 @@ loop1:
 				pushback(r);
 		}
 	}
-	
+
 	flowend(g);
 }
 
@@ -298,7 +298,7 @@ pushback(Flow *r0)
 {
 	Flow *r, *b;
 	Prog *p0, *p, t;
-	
+
 	b = nil;
 	p0 = r0->prog;
 	for(r=uniqp(r0); r!=nil && uniqs(r)!=nil; r=uniqp(r)) {
@@ -313,7 +313,7 @@ pushback(Flow *r0)
 			break;
 		b = r;
 	}
-	
+
 	if(b == nil) {
 		if(debug['v']) {
 			print("no pushback: %P\n", r0->prog);
@@ -768,7 +768,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 		return 3;
 
 	case ACALL:
-		if(REGEXT && v->type <= REGEXT && v->type > exregoffset)
+		if(REGEXT > 0 && v->type <= REGEXT && v->type > exregoffset)
 			return 2;
 		if(REGARG >= 0 && v->type == (uchar)REGARG)
 			return 2;
@@ -796,7 +796,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 
 	if((info.reguse|info.regset) & RtoB(v->type))
 		return 2;
-		
+
 	if(info.flags & LeftAddr)
 		if(copyas(&p->from, v))
 			return 2;
@@ -804,7 +804,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 	if((info.flags & (RightRead|RightWrite)) == (RightRead|RightWrite))
 		if(copyas(&p->to, v))
 			return 2;
-	
+
 	if(info.flags & RightWrite) {
 		if(copyas(&p->to, v)) {
 			if(s != nil)
@@ -814,7 +814,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 			return 3;
 		}
 	}
-	
+
 	if(info.flags & (LeftAddr|LeftRead|LeftWrite|RightAddr|RightRead|RightWrite)) {
 		if(s != nil) {
 			if(copysub(&p->from, v, s, 1))

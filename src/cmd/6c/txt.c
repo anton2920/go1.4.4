@@ -354,7 +354,7 @@ void
 regret(Node *n, Node *nn, Type *t, int mode)
 {
 	int r;
-	
+
 	if(mode == 0 || hasdotdotdot(t) || nn->type->width == 0) {
 		r = REGRET;
 		if(typefd[nn->type->etype])
@@ -363,7 +363,7 @@ regret(Node *n, Node *nn, Type *t, int mode)
 		reg[r]++;
 		return;
 	}
-	
+
 	if(mode == 1) {
 		// fetch returned value after call.
 		// already called gargs, so curarg is set.
@@ -386,8 +386,8 @@ regret(Node *n, Node *nn, Type *t, int mode)
 		n->xoffset = argsize(0);
 		return;
 	}
-	
-	fatal(Z, "bad regret");	
+
+	fatal(Z, "bad regret");
 }
 
 void
@@ -927,7 +927,7 @@ gmove(Node *f, Node *t)
 			a = AMOVQ;
 		}
 		break;
-	
+
 	case CASE(	TIND,	TCHAR):
 	case CASE(	TIND,	TUCHAR):
 	case CASE(	TIND,	TSHORT):
@@ -957,7 +957,7 @@ gmove(Node *f, Node *t)
 			f->vconst &= (int)0xffffffffU;
 			a = AMOVL;
 		}
-		break;	
+		break;
 
 	case CASE(	TIND,	TIND):
 	case CASE(	TIND,	TVLONG):
@@ -992,7 +992,7 @@ gmove(Node *f, Node *t)
 			f->vconst &= 0xffff;
 			if(f->vconst & 0x8000){
 				f->vconst |= 0xffff0000;
-				f->vconst |= (vlong)~0 << 32;
+				f->vconst |= (vlong)~0U << 32;
 			}
 			a = AMOVL;
 		}
@@ -1042,7 +1042,7 @@ gmove(Node *f, Node *t)
 			f->vconst &= 0xff;
 			if(f->vconst & 0x80){
 				f->vconst |= 0xffffff00;
-				f->vconst |= (vlong)~0 << 32;
+				f->vconst |= (vlong)~0U << 32;
 			}
 			a = AMOVQ;
 		}
@@ -1581,7 +1581,7 @@ void
 gpcdata(int index, int value)
 {
 	Node n1;
-	
+
 	n1 = *nodconst(index);
 	gins(APCDATA, &n1, nodconst(value));
 }
@@ -1590,7 +1590,7 @@ void
 gprefetch(Node *n)
 {
 	Node n1;
-	
+
 	regalloc(&n1, n, Z);
 	gmove(n, &n1);
 	n1.op = OINDREG;
