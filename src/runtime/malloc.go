@@ -40,10 +40,16 @@ type pageID uintptr
 // base address for all 0-byte allocations
 var zerobase uintptr
 
+var AllocationsAreDisabled bool
+
 // Allocate an object of size bytes.
 // Small objects are allocated from the per-P cache's free lists.
 // Large objects (> 32 kB) are allocated straight from the heap.
 func mallocgc(size uintptr, typ *_type, flags uint32) unsafe.Pointer {
+	if AllocationsAreDisabled {
+		gothrow("Allocations are disabled!")
+	}
+
 	if size == 0 {
 		return unsafe.Pointer(&zerobase)
 	}

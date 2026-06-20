@@ -79,9 +79,12 @@
 
 package runtime
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 // Call from Go to C.
+//
 //go:nosplit
 func cgocall(fn, arg unsafe.Pointer) {
 	cgocall_errno(fn, arg)
@@ -114,7 +117,9 @@ func cgocall_errno(fn, arg unsafe.Pointer) int32 {
 	mp := getg().m
 	mp.ncgocall++
 	mp.ncgo++
-	defer endcgo(mp)
+	if !AllocationsAreDisabled {
+		defer endcgo(mp)
+	}
 
 	/*
 	 * Announce we are entering a system call
@@ -131,6 +136,9 @@ func cgocall_errno(fn, arg unsafe.Pointer) int32 {
 	errno := asmcgocall_errno(fn, arg)
 	exitsyscall()
 
+	if AllocationsAreDisabled {
+		endcgo(mp)
+	}
 	return errno
 }
 
@@ -175,6 +183,7 @@ func cfree(p unsafe.Pointer) {
 }
 
 // Call from C back to Go.
+//
 //go:nosplit
 func cgocallbackg() {
 	gp := getg()
