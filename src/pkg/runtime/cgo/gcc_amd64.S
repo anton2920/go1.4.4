@@ -69,7 +69,7 @@ EXT(crosscall2):
 
 	movq  %rdx, 0(%rsp)	/* arg */
 	movq  %r8, 8(%rsp)	/* argsize (includes padding) */
-	
+
 	call *%rcx	/* fn */
 #else
 	movq  %rsi, 0(%rsp)	/* arg */
@@ -87,6 +87,8 @@ EXT(crosscall2):
 #if defined(__WIN64)
 	movq	0x40(%rsp), %rdi
 	movq	0x48(%rsp), %rsi
-#endif	
+#endif
 	addq  $0x58, %rsp
 	ret
+
+.section  .note.GNU-stack, "", @progbits

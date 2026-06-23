@@ -384,7 +384,7 @@ static char *proto_gccargs[] = {
 	"-Wno-unknown-pragmas",
 	"-Wno-switch",
 	"-Wno-comment",
-	"-Werror",
+	/* "-Werror", */
 	"-fno-common",
 	"-ggdb",
 	"-O2",
