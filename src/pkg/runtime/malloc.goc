@@ -20,6 +20,7 @@ MHeap runtime·mheap;
 extern MStats mstats;	// defined in extern.go
 
 extern volatile int32 runtime·MemProfileRate;
+extern volatile bool runtime·AllocationsAreDisabled;
 
 // Allocate an object of at least size bytes.
 // Small objects are allocated from the per-thread cache's free lists.
@@ -32,6 +33,9 @@ runtime·mallocgc(uintptr size, uint32 flag, int32 dogc, int32 zeroed)
 	uintptr npages;
 	MSpan *s;
 	void *v;
+
+	if (runtime·AllocationsAreDisabled)
+		runtime·throw("Allocations are disabled!");
 
 	if(runtime·gcwaiting && g != m->g0 && m->locks == 0)
 		runtime·gosched();
@@ -116,7 +120,7 @@ runtime·free(void *v)
 
 	if(v == nil)
 		return;
-	
+
 	// If you change this also change mgc0.c:/^sweep,
 	// which has a copy of the guts of free.
 
@@ -268,7 +272,7 @@ runtime·mallocinit(void)
 	p = nil;
 	arena_size = 0;
 	bitmap_size = 0;
-	
+
 	// for 64-bit build
 	USED(p);
 	USED(arena_size);
@@ -334,7 +338,7 @@ runtime·mallocinit(void)
 			bitmap_size = (limit / 9) & ~((1<<PageShift) - 1);
 			arena_size = bitmap_size * 8;
 		}
-		
+
 		// SysReserve treats the address we ask for, end, as a hint,
 		// not as an absolute requirement.  If we ask for the end
 		// of the data segment but the operating system requires
@@ -359,7 +363,7 @@ runtime·mallocinit(void)
 	runtime·mheap.arena_used = runtime·mheap.arena_start;
 	runtime·mheap.arena_end = runtime·mheap.arena_start + arena_size;
 
-	// Initialize the rest of the allocator.	
+	// Initialize the rest of the allocator.
 	runtime·MHeap_Init(&runtime·mheap, runtime·SysAlloc);
 	m->mcache = runtime·allocmcache();
 
@@ -396,7 +400,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 		runtime·MHeap_MapBits(h);
 		return p;
 	}
-	
+
 	// If using 64-bit, our reservation is all we have.
 	if(sizeof(void*) == 8 && (uintptr)h->bitmap >= 0xffffffffU)
 		return nil;
@@ -421,7 +425,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 			h->arena_end = h->arena_used;
 		runtime·MHeap_MapBits(h);
 	}
-	
+
 	return p;
 }
 
@@ -514,7 +518,7 @@ func SetFinalizer(obj Eface, finalizer Eface) {
 		}
 		nret = (nret + sizeof(void*)-1) & ~(sizeof(void*)-1);
 	}
-	
+
 	if(!runtime·addfinalizer(obj.data, finalizer.data, nret)) {
 		runtime·printf("runtime.SetFinalizer: finalizer already set\n");
 		goto throw;

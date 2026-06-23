@@ -48,6 +48,8 @@ func NumGoroutine() int
 // at the beginning of main).
 var MemProfileRate int = 512 * 1024
 
+var AllocationsAreDisabled bool
+
 // A MemProfileRecord describes the live objects allocated
 // by a particular call sequence (stack trace).
 type MemProfileRecord struct {
