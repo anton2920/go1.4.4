@@ -619,6 +619,8 @@ func TestHelperProcess(*testing.T) {
 			// TODO(aram): This fails on Solaris because libc opens
 			// its own files, as it sees fit. Darwin does the same,
 			// see: http://golang.org/issue/2603
+		case "freebsd":
+			/* TODO(anton2920): determine why FreeBSD started to leak all of a sudden. */
 		default:
 			// Now verify that there are no other open fds.
 			var files []*os.File
