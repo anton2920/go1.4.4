@@ -542,39 +542,59 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestParseInSydney(t *testing.T) {
-	loc, err := LoadLocation("Australia/Sydney")
+/* NOTE(anton2920): backported from Go 1.8.1. See: golang/go/issues/19457. */
+// TestParseInLocation checks that the Parse and ParseInLocation
+// functions do not get confused by the fact that AST (Arabia Standard
+// Time) and AST (Atlantic Standard Time) are different time zones,
+// even though they have the same abbreviation.
+//
+// ICANN has been slowly phasing out invented abbreviation in favor of
+// numeric time zones (for example, the Asia/Baghdad time zone
+// abbreviation got changed from AST to +03 in the 2017a tzdata
+// release); but we still want to make sure that the time package does
+// not get confused on systems with slightly older tzdata packages.
+func TestParseInLocation(t *testing.T) {
+	baghdad, err := LoadLocation("Asia/Baghdad")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Check that Parse (and ParseInLocation) understand
-	// that Feb EST and Aug EST are different time zones in Sydney
-	// even though both are called EST.
-	t1, err := ParseInLocation("Jan 02 2006 MST", "Feb 01 2013 EST", loc)
+	var t1, t2 Time
+	t1, err = ParseInLocation("Jan 02 2006 MST", "Feb 01 2013 AST", baghdad)
 	if err != nil {
 		t.Fatal(err)
-	}
-	t2 := Date(2013, February, 1, 00, 00, 00, 0, loc)
-	if t1 != t2 {
-		t.Fatalf("ParseInLocation(Feb 01 2013 EST, Sydney) = %v, want %v", t1, t2)
 	}
 	_, offset := t1.Zone()
-	if offset != 11*60*60 {
-		t.Fatalf("ParseInLocation(Feb 01 2013 EST, Sydney).Zone = _, %d, want _, %d", offset, 11*60*60)
+	// A zero offset means that ParseInLocation did not recognize the
+	// 'AST' abbreviation as matching the current location (Baghdad,
+	// where we'd expect a +03 hrs offset); likely because we're using
+	// a recent tzdata release (2017a or newer).
+	// If it happens, skip the Baghdad test.
+	if offset != 0 {
+		t2 = Date(2013, February, 1, 00, 00, 00, 0, baghdad)
+		if t1 != t2 {
+			t.Fatalf("ParseInLocation(Feb 01 2013 AST, Baghdad) = %v, want %v", t1, t2)
+		}
+		if offset != 3*60*60 {
+			t.Fatalf("ParseInLocation(Feb 01 2013 AST, Baghdad).Zone = _, %d, want _, %d", offset, 3*60*60)
+		}
 	}
-
-	t1, err = ParseInLocation("Jan 02 2006 MST", "Aug 01 2013 EST", loc)
+	blancSablon, err := LoadLocation("America/Blanc-Sablon")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t2 = Date(2013, August, 1, 00, 00, 00, 0, loc)
+
+	t1, err = ParseInLocation("Jan 02 2006 MST", "Feb 01 2013 AST", blancSablon)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t2 = Date(2013, February, 1, 00, 00, 00, 0, blancSablon)
 	if t1 != t2 {
-		t.Fatalf("ParseInLocation(Aug 01 2013 EST, Sydney) = %v, want %v", t1, t2)
+		t.Fatalf("ParseInLocation(Feb 01 2013 AST, Blanc-Sablon) = %v, want %v", t1, t2)
 	}
 	_, offset = t1.Zone()
-	if offset != 10*60*60 {
-		t.Fatalf("ParseInLocation(Aug 01 2013 EST, Sydney).Zone = _, %d, want _, %d", offset, 10*60*60)
+	if offset != -4*60*60 {
+		t.Fatalf("ParseInLocation(Feb 01 2013 AST, Blanc-Sablon).Zone = _, %d, want _, %d", offset, -4*60*60)
 	}
 }
 
@@ -1422,8 +1442,10 @@ func TestLoadFixed(t *testing.T) {
 	// but Go and most other systems use "east is positive".
 	// So GMT+1 corresponds to -3600 in the Go zone, not +3600.
 	name, offset := Now().In(loc).Zone()
-	if name != "GMT+1" || offset != -1*60*60 {
-		t.Errorf("Now().In(loc).Zone() = %q, %d, want %q, %d", name, offset, "GMT+1", -1*60*60)
+	// The zone abbreviation is "-01" since tzdata-2016g, and "GMT+1"
+	// on earlier versions; we accept both. (Issue #17276).
+	if !(name == "GMT+1" || name == "-01") || offset != -1*60*60 {
+		t.Errorf("Now().In(loc).Zone() = %q, %d, want %q or %q, %d", name, offset, "GMT+1", "-01", -1*60*60)
 	}
 }
 
