@@ -989,7 +989,7 @@ func dtypesym(t *Type) *Sym {
 		dupok = obj.DUPOK
 	}
 
-	if myimportpath == "runtime" && (tbase == Types[tbase.Etype] || tbase == bytetype || tbase == runetype || tbase == errortype) { // int, float, etc
+	if ((myimportpath == "runtime") || (myimportpath == "github.com/anton2920/gofa/nostd")) && (tbase == Types[tbase.Etype] || tbase == bytetype || tbase == runetype || tbase == errortype) { // int, float, etc
 		goto ok
 	}
 
@@ -1266,7 +1266,7 @@ func dumptypestructs() {
 	// so this is as good as any.
 	// another possible choice would be package main,
 	// but using runtime means fewer copies in .6 files.
-	if myimportpath == "runtime" {
+	if (myimportpath == "runtime") || (myimportpath == "github.com/anton2920/gofa/nostd") {
 		for i := EType(1); i <= TBOOL; i++ {
 			dtypesym(Ptrto(Types[i]))
 		}
@@ -1391,7 +1391,6 @@ func dalgsym(t *Type) *Sym {
 // use bitmaps for objects up to 64 kB in size.
 //
 // Also known to reflect/type.go.
-//
 const maxPtrmaskBytes = 2048
 
 // dgcsym emits and returns a data symbol containing GC information for type t,
