@@ -27,6 +27,7 @@ int32	runtime·checking;
 extern MStats mstats;	// defined in zruntime_def_$GOOS_$GOARCH.go
 
 extern volatile intgo runtime·MemProfileRate;
+extern volatile bool runtime·AllocationsAreDisabled;
 
 static MSpan* largealloc(uint32, uintptr*);
 static void profilealloc(void *v, uintptr size);
@@ -46,6 +47,9 @@ runtime·mallocgc(uintptr size, uintptr typ, uint32 flag)
 	MSpan *s;
 	MLink *v, *next;
 	byte *tiny;
+
+	if (runtime·AllocationsAreDisabled)
+		runtime·throw("Allocations are disabled!");
 
 	if(size == 0) {
 		// All 0-length allocations use this pointer.
@@ -275,7 +279,7 @@ runtime·free(void *v)
 
 	if(v == nil)
 		return;
-	
+
 	// If you change this also change mgc0.c:/^sweep,
 	// which has a copy of the guts of free.
 
@@ -324,7 +328,7 @@ runtime·free(void *v)
 		// Using SysFault here means that the program will run out of
 		// memory fairly quickly in efence mode, but at least it won't
 		// have mysterious crashes due to confused memory reuse.
-		// It should be possible to switch back to SysFree if we also 
+		// It should be possible to switch back to SysFree if we also
 		// implement and then call some kind of MHeap_DeleteSpan.
 		if(runtime·debug.efence)
 			runtime·SysFault((void*)(s->start<<PageShift), size);
@@ -482,7 +486,7 @@ runtime·mallocinit(void)
 		// in the middle of 0x00c0 for us to choose.  Choosing 0x00c0 means
 		// that the valid memory addresses will begin 0x00c0, 0x00c1, ..., 0x00df.
 		// In little-endian, that's c0 00, c1 00, ..., df 00. None of those are valid
-		// UTF-8 sequences, and they are otherwise as far away from 
+		// UTF-8 sequences, and they are otherwise as far away from
 		// ff (likely a common byte) as possible.  If that fails, we try other 0xXXc0
 		// addresses.  An earlier attempt to use 0x11f8 caused out of memory errors
 		// on OS X during thread allocations.  0x00c0 causes conflicts with
@@ -567,7 +571,7 @@ runtime·mallocinit(void)
 	if(((uintptr)runtime·mheap.arena_start & (PageSize-1)) != 0)
 		runtime·throw("misrounded allocation in mallocinit");
 
-	// Initialize the rest of the allocator.	
+	// Initialize the rest of the allocator.
 	runtime·MHeap_Init(&runtime·mheap);
 	m->mcache = runtime·allocmcache();
 
@@ -619,12 +623,12 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 		runtime·MHeap_MapSpans(h);
 		if(raceenabled)
 			runtime·racemapshadow(p, n);
-		
+
 		if(((uintptr)p & (PageSize-1)) != 0)
 			runtime·throw("misrounded allocation in MHeap_SysAlloc");
 		return p;
 	}
-	
+
 	// If using 64-bit, our reservation is all we have.
 	if(h->arena_end - h->arena_start >= MaxArena32)
 		return nil;
@@ -643,7 +647,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 		runtime·SysFree(p, p_size, &mstats.heap_sys);
 		return nil;
 	}
-	
+
 	p_end = p + p_size;
 	p += -(uintptr)p & (PageSize-1);
 	if(p+n > h->arena_used) {
@@ -655,7 +659,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 		if(raceenabled)
 			runtime·racemapshadow(p, n);
 	}
-	
+
 	if(((uintptr)p & (PageSize-1)) != 0)
 		runtime·throw("misrounded allocation in MHeap_SysAlloc");
 	return p;
@@ -739,11 +743,11 @@ settype(MSpan *s, void *v, uintptr typ)
 		((uintptr*)data3)[1] = typ;
 		data3[8*sizeof(uintptr) + ofs] = 1;
 		break;
-		
+
 	case MTypes_Words:
 		((uintptr*)s->types.data)[ofs] = typ;
 		break;
-		
+
 	case MTypes_Bytes:
 		data3 = (byte*)s->types.data;
 		for(j=1; j<8; j++) {
@@ -763,7 +767,7 @@ settype(MSpan *s, void *v, uintptr typ)
 			data2 = runtime·mallocgc(nbytes2, 0, FlagNoProfiling|FlagNoScan|FlagNoInvokeGC);
 			s->types.compression = MTypes_Words;
 			s->types.data = (uintptr)data2;
-			
+
 			// Move the contents of data3 to data2. Then deallocate data3.
 			for(j=0; j<ntypes; j++) {
 				t = data3[8*sizeof(uintptr) + j];
