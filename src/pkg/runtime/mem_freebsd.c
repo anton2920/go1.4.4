@@ -65,7 +65,7 @@ runtime·SysReserve(void *v, uintptr n, bool *reserved)
 	}
 
 	*reserved = true;
-	p = runtime·mmap(v, n, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	p = runtime·mmap(v, n, PROT_NONE, MAP_ANON|MAP_PRIVATE|MAP_FIXED|MAP_EXCL, -1, 0);
 	if(p < (void*)4096)
 		return nil;
 	return p;
@@ -75,12 +75,12 @@ void
 runtime·SysMap(void *v, uintptr n, bool reserved, uint64 *stat)
 {
 	void *p;
-	
+
 	runtime·xadd64(stat, n);
 
 	// On 64-bit, we don't actually have v reserved, so tread carefully.
 	if(!reserved) {
-		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|MAP_FIXED|MAP_EXCL, -1, 0);
 		if(p == (void*)ENOMEM)
 			runtime·throw("runtime: out of memory");
 		if(p != v) {

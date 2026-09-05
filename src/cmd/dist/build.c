@@ -156,7 +156,7 @@ init(void)
 		if(!streq(goextlinkenabled, "0") && !streq(goextlinkenabled, "1"))
 			fatal("unknown $GO_EXTLINK_ENABLED %s", goextlinkenabled);
 	}
-	
+
 	xgetenv(&b, "CC");
 	if(b.len == 0) {
 		// Use clang on OS X, because gcc is deprecated there.
@@ -464,7 +464,7 @@ static char *proto_gccargs[] = {
 	"-Wno-switch",
 	"-Wno-comment",
 	"-Wno-missing-field-initializers",
-	"-Werror",
+	/* "-Werror", */
 	"-fno-common",
 	"-ggdb",
 	"-pipe",
@@ -872,7 +872,7 @@ install(char *dir)
 	// If there are no files to compile, we're done.
 	if(files.len == 0)
 		goto out;
-	
+
 	for(i=0; i<lib.len && !stale; i++)
 		if(mtime(lib.p[i]) > ttarg)
 			stale = 1;
@@ -977,7 +977,7 @@ install(char *dir)
 					vadd(&compile, "-m64");
 				else if(streq(gohostarch, "386"))
 					vadd(&compile, "-m32");
-	
+
 				vadd(&compile, "-I");
 				vadd(&compile, bpathf(&b, "%s/include", goroot));
 			}
@@ -1170,7 +1170,7 @@ shouldbuild(char *file, char *dir)
 	int i, j, ret;
 	Buf b;
 	Vec lines, fields;
-	
+
 	// Check file name for GOOS or GOARCH.
 	name = lastelem(file);
 	for(i=0; i<nelem(okgoos); i++)
@@ -1264,7 +1264,7 @@ dopack(char *dst, char *src, char **extra, int nextra)
 	int i;
 	char c, *p, *q;
 	Buf b, bdst;
-	
+
 	binit(&b);
 	binit(&bdst);
 
@@ -1378,7 +1378,7 @@ static char *cleantab[] = {
 	"cmd/8l",
 	"cmd/cc",
 	"cmd/gc",
-	"cmd/go",	
+	"cmd/go",
 	"lib9",
 	"libbio",
 	"liblink",
