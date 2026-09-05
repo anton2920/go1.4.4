@@ -25,6 +25,7 @@ int32	runtime·checking;
 extern MStats mstats;	// defined in zruntime_def_$GOOS_$GOARCH.go
 
 extern volatile intgo runtime·MemProfileRate;
+extern volatile bool runtime·AllocationsAreDisabled;
 
 // Allocate an object of at least size bytes.
 // Small objects are allocated from the per-thread cache's free lists.
@@ -40,6 +41,9 @@ runtime·mallocgc(uintptr size, uintptr typ, uint32 flag)
 	uintptr npages;
 	MSpan *s;
 	MLink *v;
+
+	if (runtime·AllocationsAreDisabled)
+		runtime·throw("Allocations are disabled!");
 
 	if(size == 0) {
 		// All 0-length allocations use this pointer.
@@ -165,7 +169,7 @@ runtime·free(void *v)
 
 	if(v == nil)
 		return;
-	
+
 	// If you change this also change mgc0.c:/^sweep,
 	// which has a copy of the guts of free.
 
@@ -360,7 +364,7 @@ runtime·mallocinit(void)
 		// in the middle of 0x00c0 for us to choose.  Choosing 0x00c0 means
 		// that the valid memory addresses will begin 0x00c0, 0x00c1, ..., 0x00df.
 		// In little-endian, that's c0 00, c1 00, ..., df 00. None of those are valid
-		// UTF-8 sequences, and they are otherwise as far away from 
+		// UTF-8 sequences, and they are otherwise as far away from
 		// ff (likely a common byte) as possible.  If that fails, we try other 0xXXc0
 		// addresses.  An earlier attempt to use 0x11f8 caused out of memory errors
 		// on OS X during thread allocations.  0x00c0 causes conflicts with
@@ -439,7 +443,7 @@ runtime·mallocinit(void)
 	runtime·mheap.arena_used = runtime·mheap.arena_start;
 	runtime·mheap.arena_end = runtime·mheap.arena_start + arena_size;
 
-	// Initialize the rest of the allocator.	
+	// Initialize the rest of the allocator.
 	runtime·MHeap_Init(&runtime·mheap);
 	m->mcache = runtime·allocmcache();
 
@@ -478,7 +482,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 			runtime·racemapshadow(p, n);
 		return p;
 	}
-	
+
 	// If using 64-bit, our reservation is all we have.
 	if(sizeof(void*) == 8 && (uintptr)h->bitmap >= 0xffffffffU)
 		return nil;
@@ -506,7 +510,7 @@ runtime·MHeap_SysAlloc(MHeap *h, uintptr n)
 		if(raceenabled)
 			runtime·racemapshadow(p, n);
 	}
-	
+
 	return p;
 }
 
@@ -787,7 +791,7 @@ func SetFinalizer(obj Eface, finalizer Eface) {
 		}
 		nret = ROUND(nret, sizeof(void*));
 	}
-	
+
 	if(!runtime·addfinalizer(obj.data, finalizer.data, nret, fint, ot)) {
 		runtime·printf("runtime.SetFinalizer: finalizer already set\n");
 		goto throw;
