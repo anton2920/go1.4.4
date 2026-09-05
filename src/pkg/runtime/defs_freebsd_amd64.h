@@ -9,6 +9,7 @@ enum {
 	PROT_EXEC	= 0x4,
 
 	MAP_ANON	= 0x1000,
+	MAP_EXCL	= 0x4000,
 	MAP_PRIVATE	= 0x2,
 	MAP_FIXED	= 0x10,
 

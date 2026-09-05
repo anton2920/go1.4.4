@@ -414,7 +414,7 @@ static char *proto_gccargs[] = {
 	"-Wno-unknown-pragmas",
 	"-Wno-switch",
 	"-Wno-comment",
-	"-Werror",
+	/* "-Werror", */
 	"-fno-common",
 	"-ggdb",
 	"-pipe",
@@ -792,7 +792,7 @@ install(char *dir)
 	// If there are no files to compile, we're done.
 	if(files.len == 0)
 		goto out;
-	
+
 	for(i=0; i<lib.len && !stale; i++)
 		if(mtime(lib.p[i]) > ttarg)
 			stale = 1;
@@ -910,7 +910,7 @@ install(char *dir)
 					vadd(&compile, "-m32");
 				if(streq(dir, "lib9"))
 					vadd(&compile, "-DPLAN9PORT");
-	
+
 				vadd(&compile, "-I");
 				vadd(&compile, bpathf(&b, "%s/include", goroot));
 			}
@@ -1104,7 +1104,7 @@ shouldbuild(char *file, char *dir)
 		if(streq(dir, "libbio"))
 			return 0;
 	}
-	
+
 	// Check file name for GOOS or GOARCH.
 	name = lastelem(file);
 	for(i=0; i<nelem(okgoos); i++)

@@ -48,8 +48,8 @@ runtime·SysReserve(void *v, uintptr n)
 	// and check the assumption in SysMap.
 	if(sizeof(void*) == 8)
 		return v;
-	
-	p = runtime·mmap(v, n, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0);
+
+	p = runtime·mmap(v, n, PROT_NONE, MAP_ANON|MAP_PRIVATE|MAP_FIXED|MAP_EXCL, -1, 0);
 	if(p < (void*)4096)
 		return nil;
 	return p;
@@ -59,12 +59,12 @@ void
 runtime·SysMap(void *v, uintptr n)
 {
 	void *p;
-	
+
 	mstats.sys += n;
 
 	// On 64-bit, we don't actually have v reserved, so tread carefully.
 	if(sizeof(void*) == 8) {
-		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+		p = runtime·mmap(v, n, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE|MAP_FIXED|MAP_EXCL, -1, 0);
 		if(p == (void*)ENOMEM)
 			runtime·throw("runtime: out of memory");
 		if(p != v) {
